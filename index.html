@@ -10,6 +10,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- QRCode.js library for quick device scanning -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
@@ -53,7 +55,7 @@
 </head>
 <body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-sans min-h-screen flex flex-col transition-colors duration-200" onclick="closeSettingsDropdownOnOutsideClick(event)">
 
-    <!-- Top Navigation -->
+    <!-- Top Navigation Header -->
     <header class="sticky top-0 z-30 bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-700 px-3 sm:px-4 lg:px-8 py-2 sm:py-3 transition-colors">
         <div class="max-w-7xl mx-auto flex items-center justify-between">
             <div class="flex items-center space-x-2 sm:space-x-3 min-w-0">
@@ -63,10 +65,9 @@
                 <div class="min-w-0">
                     <div class="flex items-center space-x-2">
                         <h1 class="font-bold text-base sm:text-lg leading-tight truncate">Common Centz</h1>
-                        <!-- Cloud Sync Status Badge -->
-                        <span id="sync-status-badge" title="Cloud Database Sync Status" class="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300">
-                            <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                            <span id="sync-status-text">Connecting...</span>
+                        <span id="sync-status-badge" class="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                            <span id="sync-status-dot" class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+                            <span id="sync-status-text">Standalone Mode</span>
                         </span>
                     </div>
                     <p class="text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 truncate hidden xs:block sm:block">Personal Finance, Savings & Loan Manager</p>
@@ -94,16 +95,20 @@
                     <i data-lucide="moon" class="w-4 h-4 sm:w-5 sm:h-5 block dark:hidden"></i>
                 </button>
 
-                <!-- Data Export/Reset/Sync Dropdown -->
+                <!-- Settings Dropdown -->
                 <div class="relative id-settings-container">
                     <button id="settingsBtn" onclick="toggleSettingsMenu(event)" class="p-1.5 sm:p-2 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition focus:outline-none">
                         <i data-lucide="settings" class="w-4 h-4 sm:w-5 sm:h-5"></i>
                     </button>
                     <!-- Floating Menu -->
                     <div id="settingsDropdown" class="hidden absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl py-2 z-50">
-                        <button onclick="openSyncModal(); hideSettingsMenu();" class="w-full text-left px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center space-x-2 text-brand-600 dark:text-brand-400 font-semibold">
-                            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-                            <span>Pair / Cloud Sync Devices</span>
+                        <button onclick="openSheetsSyncModal(); hideSettingsMenu();" class="w-full text-left px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center space-x-2 text-emerald-600 dark:text-emerald-400 font-semibold">
+                            <i data-lucide="sheet" class="w-4 h-4"></i>
+                            <span>Google Sheets Cloud Sync</span>
+                        </button>
+                        <button onclick="openShareModal(); hideSettingsMenu();" class="w-full text-left px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center space-x-2 text-brand-600 dark:text-brand-400 font-semibold">
+                            <i data-lucide="qr-code" class="w-4 h-4"></i>
+                            <span>Transfer Data via QR/URL</span>
                         </button>
                         <button onclick="openCategoryModal(); hideSettingsMenu();" class="w-full text-left px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center space-x-2">
                             <i data-lucide="tags" class="w-4 h-4"></i>
@@ -117,6 +122,10 @@
                             <i data-lucide="download" class="w-4 h-4"></i>
                             <span>Full Backup (JSON)</span>
                         </button>
+                        <button onclick="triggerImport(); hideSettingsMenu();" class="w-full text-left px-4 py-2 text-sm hover:bg-slate-100 dark:hover:bg-slate-700 flex items-center space-x-2">
+                            <i data-lucide="upload" class="w-4 h-4"></i>
+                            <span>Restore Backup File</span>
+                        </button>
                         <button onclick="resetAllData(); hideSettingsMenu();" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 flex items-center space-x-2">
                             <i data-lucide="trash-2" class="w-4 h-4"></i>
                             <span>Reset Data</span>
@@ -126,6 +135,8 @@
             </div>
         </div>
     </header>
+
+    <input type="file" id="import-file-input" accept=".json" class="hidden" onchange="importData(event)">
 
     <!-- Floating Action Button (FAB) for Quick Entry -->
     <div class="fixed bottom-6 right-6 z-40">
@@ -249,6 +260,41 @@
             <span id="toast-message" class="text-sm font-medium">Action completed successfully</span>
         </div>
 
+        <!-- Google Sheets Cloud Sync Modal -->
+        <div id="sheets-sync-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl max-w-lg w-full p-6 space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
+                    <div class="flex items-center space-x-2">
+                        <i data-lucide="sheet" class="w-5 h-5 text-emerald-500"></i>
+                        <h3 class="font-bold text-lg text-slate-800 dark:text-slate-100">Google Sheets Cloud Sync</h3>
+                    </div>
+                    <button onclick="closeSheetsSyncModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1">
+                        <i data-lucide="x" class="w-5 h-5"></i>
+                    </button>
+                </div>
+                
+                <div class="space-y-3 text-xs text-slate-600 dark:text-slate-300">
+                    <p>Sync your finance tracker across devices automatically using your own personal Google Sheet as a free database!</p>
+
+                    <div>
+                        <label class="block font-semibold uppercase text-slate-400 mb-1">Google Apps Script Web App URL</label>
+                        <input type="url" id="sheets-url-input" placeholder="https://script.google.com/macros/s/.../exec" class="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-xs focus:ring-2 focus:ring-emerald-500 focus:outline-none font-mono">
+                    </div>
+
+                    <div class="flex items-center justify-between pt-2">
+                        <button type="button" onclick="manualSheetsSync()" class="px-4 py-2 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 text-slate-700 dark:text-slate-200 rounded-xl font-semibold transition flex items-center space-x-1">
+                            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                            <span>Sync Now</span>
+                        </button>
+                        <div class="flex items-center space-x-2">
+                            <button type="button" onclick="disconnectSheetsSync()" class="px-3 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition font-medium">Disconnect</button>
+                            <button type="button" onclick="saveSheetsSyncUrl()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-md transition">Connect & Save</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Quick Add FAB Modal -->
         <div id="quick-add-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
             <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl max-w-lg w-full p-6 space-y-4">
@@ -262,7 +308,6 @@
                     </button>
                 </div>
 
-                <!-- Form Type Selector -->
                 <div>
                     <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Select Type</label>
                     <select id="quick-add-type" onchange="renderQuickAddForm(this.value)" class="w-full px-3 py-2 bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl text-xs font-bold focus:outline-none">
@@ -276,9 +321,7 @@
                 </div>
 
                 <form id="quick-add-form" onsubmit="handleQuickAddSubmit(event)" class="space-y-4">
-                    <div id="quick-add-fields-container" class="space-y-4">
-                        <!-- Dynamic fields injected here -->
-                    </div>
+                    <div id="quick-add-fields-container" class="space-y-4"></div>
                     <div class="flex items-center justify-end space-x-3 pt-3 border-t border-slate-100 dark:border-slate-700">
                         <button type="button" onclick="closeQuickAddModal()" class="px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition">Cancel</button>
                         <button type="submit" class="px-5 py-2 text-sm bg-brand-600 hover:bg-brand-700 text-white font-medium rounded-xl shadow-md transition">Save Item</button>
@@ -287,45 +330,36 @@
             </div>
         </div>
 
-        <!-- Cloud Sync & Device Pairing Modal -->
-        <div id="sync-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
+        <!-- URL / QR Code Data Sync Modal -->
+        <div id="share-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4">
             <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-2xl max-w-md w-full p-6 space-y-4">
                 <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-700 pb-3">
                     <div class="flex items-center space-x-2">
-                        <i data-lucide="refresh-cw" class="w-5 h-5 text-brand-500"></i>
-                        <h3 class="font-bold text-lg text-slate-800 dark:text-slate-100">Pair Devices & Sync Data</h3>
+                        <i data-lucide="qr-code" class="w-5 h-5 text-brand-500"></i>
+                        <h3 class="font-bold text-lg text-slate-800 dark:text-slate-100">Transfer Data to Phone / Laptop</h3>
                     </div>
-                    <button onclick="closeSyncModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1">
+                    <button onclick="closeShareModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1">
                         <i data-lucide="x" class="w-5 h-5"></i>
                     </button>
                 </div>
-                <div class="space-y-3 text-sm">
-                    <p class="text-slate-600 dark:text-slate-300">
-                        To sync your financial records live between your phone and laptop, copy your **Cloud Sync Key** below and enter it on your other device:
+                <div class="space-y-3 text-sm text-center">
+                    <p class="text-slate-600 dark:text-slate-300 text-xs">
+                        Scan this QR code on your phone camera or copy the link below to instantly clone your current financial tracker dataset onto your other device:
                     </p>
 
+                    <div id="qrcode-container" class="flex justify-center my-3 p-3 bg-white rounded-xl border border-slate-200 w-fit mx-auto"></div>
+
                     <div>
-                        <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Your Device Sync Key</label>
                         <div class="flex items-center space-x-2">
-                            <input type="text" id="sync-key-display" readonly class="flex-1 px-3 py-2 bg-slate-100 dark:bg-slate-700 rounded-xl text-xs font-mono border border-slate-200 dark:border-slate-600 focus:outline-none">
-                            <button onclick="copySyncKey()" class="px-3 py-2 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 rounded-xl text-xs font-semibold transition">
-                                Copy
+                            <input type="text" id="share-url-display" readonly class="flex-1 px-3 py-2 bg-slate-100 dark:bg-slate-700 rounded-xl text-xs font-mono border border-slate-200 dark:border-slate-600 focus:outline-none truncate">
+                            <button onclick="copyShareUrl()" class="px-3 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-semibold transition shrink-0">
+                                Copy Link
                             </button>
                         </div>
                     </div>
-
-                    <div class="pt-3 border-t border-slate-100 dark:border-slate-700">
-                        <label class="block text-xs font-semibold uppercase text-slate-400 mb-1">Connect to Another Device's Sync Key</label>
-                        <form onsubmit="handleApplySyncKey(event)" class="flex items-center space-x-2">
-                            <input type="text" id="custom-sync-key-input" placeholder="Paste Sync Key here..." required class="flex-1 px-3 py-2 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 text-xs focus:ring-2 focus:ring-brand-500 focus:outline-none">
-                            <button type="submit" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-semibold transition">
-                                Connect
-                            </button>
-                        </form>
-                    </div>
                 </div>
                 <div class="flex justify-end pt-2 border-t border-slate-100 dark:border-slate-700">
-                    <button type="button" onclick="closeSyncModal()" class="px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition">Close</button>
+                    <button type="button" onclick="closeShareModal()" class="px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition">Close</button>
                 </div>
             </div>
         </div>
@@ -349,10 +383,7 @@
                     </div>
                     <button type="submit" class="w-full py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold rounded-xl transition">Add Category</button>
                 </form>
-                <p class="text-xs text-slate-400">Set optional monthly spending limits to track progress bars on your budget summary.</p>
-                <div class="max-h-60 overflow-y-auto space-y-2 pt-1" id="category-list-container">
-                    <!-- Dynamic categories -->
-                </div>
+                <div class="max-h-60 overflow-y-auto space-y-2 pt-1" id="category-list-container"></div>
                 <div class="flex justify-end pt-2 border-t border-slate-100 dark:border-slate-700">
                     <button type="button" onclick="closeCategoryModal()" class="px-4 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-xl transition">Close</button>
                 </div>
@@ -424,9 +455,7 @@
                         </div>
                         <div id="edit-container-category" class="hidden">
                             <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Category</label>
-                            <select id="edit-category" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none edit-category-select">
-                                <!-- Dynamic options -->
-                            </select>
+                            <select id="edit-category" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none edit-category-select"></select>
                         </div>
                     </div>
 
@@ -545,15 +574,13 @@
                 </div>
             </div>
 
-            <!-- Bill Reminders & Category Budget Progress Bars -->
+            <!-- Bill Reminders Box -->
             <div id="dash-reminders-container" class="hidden bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 p-4 rounded-2xl shadow-sm space-y-3">
                 <div class="flex items-center space-x-2 text-amber-800 dark:text-amber-300 font-bold text-sm">
                     <i data-lucide="bell" class="w-4 h-4 text-amber-600 dark:text-amber-400"></i>
                     <span>Upcoming Bill Due Reminders</span>
                 </div>
-                <div id="dash-reminders-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                    <!-- Dynamic Bill Reminders -->
-                </div>
+                <div id="dash-reminders-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3"></div>
             </div>
 
             <!-- Category Budget Caps Summary -->
@@ -564,9 +591,7 @@
                     </h3>
                     <button onclick="openCategoryModal()" class="text-xs text-brand-600 dark:text-brand-400 hover:underline font-medium">Manage Caps</button>
                 </div>
-                <div id="category-caps-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <!-- Dynamic Category Spending Progress Bars -->
-                </div>
+                <div id="category-caps-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
             </div>
 
             <!-- Charts Section -->
@@ -622,9 +647,7 @@
                         </h3>
                         <button onclick="switchTab('loans')" class="text-xs text-brand-600 dark:text-brand-400 hover:underline">Manage All</button>
                     </div>
-                    <div id="dash-loans-list" class="space-y-3">
-                        <!-- Dynamic content -->
-                    </div>
+                    <div id="dash-loans-list" class="space-y-3"></div>
                 </div>
 
                 <!-- Pending Expenses -->
@@ -639,9 +662,7 @@
                             <button onclick="switchTab('purchases')" class="text-xs text-brand-600 dark:text-brand-400 hover:underline">Purchases</button>
                         </div>
                     </div>
-                    <div id="dash-recent-expenses" class="space-y-3">
-                        <!-- Dynamic content -->
-                    </div>
+                    <div id="dash-recent-expenses" class="space-y-3"></div>
                 </div>
             </div>
         </section>
@@ -649,7 +670,7 @@
         <!-- ================= TAB: INCOME ================= -->
         <section id="view-income" class="tab-content hidden space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Income Add Form (Collapsible) -->
+                <!-- Income Add Form -->
                 <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm overflow-hidden h-fit">
                     <button type="button" onclick="toggleFormCollapse('income-form-wrapper', 'income-form-chevron')" class="w-full p-5 flex items-center justify-between text-left focus:outline-none hover:bg-slate-50/50 dark:hover:bg-slate-700/20 transition">
                         <h3 class="text-base sm:text-lg font-bold flex items-center gap-2">
@@ -702,7 +723,7 @@
                     </div>
                 </div>
 
-                <!-- Income List Table with Search -->
+                <!-- Income List Table -->
                 <div class="lg:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm flex flex-col justify-between space-y-4">
                     <div>
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
@@ -726,9 +747,7 @@
                                         <th class="pb-3 font-semibold text-center">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody id="income-table-body" class="divide-y divide-slate-100 dark:divide-slate-700/50">
-                                    <!-- Dynamic income elements -->
-                                </tbody>
+                                <tbody id="income-table-body" class="divide-y divide-slate-100 dark:divide-slate-700/50"></tbody>
                             </table>
                         </div>
                     </div>
@@ -739,7 +758,7 @@
         <!-- ================= TAB: RECURRING EXPENSES ================= -->
         <section id="view-recurring" class="tab-content hidden space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Add Form (Collapsible) -->
+                <!-- Add Form -->
                 <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm overflow-hidden h-fit">
                     <button type="button" onclick="toggleFormCollapse('recurring-form-wrapper', 'recurring-form-chevron')" class="w-full p-5 flex items-center justify-between text-left focus:outline-none hover:bg-slate-50/50 dark:hover:bg-slate-700/20 transition">
                         <h3 class="text-base sm:text-lg font-bold flex items-center gap-2 text-indigo-600 dark:text-indigo-400">
@@ -767,9 +786,7 @@
                                         <label class="block text-xs font-semibold uppercase text-slate-500">Category</label>
                                         <button type="button" onclick="openCategoryModal()" class="text-[10px] text-brand-600 hover:underline">+ New</button>
                                     </div>
-                                    <select id="rec-exp-category" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none edit-category-select">
-                                        <!-- Dynamic categories -->
-                                    </select>
+                                    <select id="rec-exp-category" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none edit-category-select"></select>
                                 </div>
                             </div>
                             <div class="grid grid-cols-2 gap-3">
@@ -809,7 +826,6 @@
                             <span id="unpaid-recurring-total" class="font-bold text-amber-500 text-lg">Rp 0</span>
                         </div>
                         
-                        <!-- Search & Filter Controls -->
                         <div class="flex items-center space-x-2">
                             <div class="relative w-36 sm:w-44">
                                 <i data-lucide="search" class="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400"></i>
@@ -839,9 +855,7 @@
                                         <th class="pb-3 font-semibold text-center">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody id="recurring-expense-table-body" class="divide-y divide-slate-100 dark:divide-slate-700/50">
-                                    <!-- Dynamic recurring elements -->
-                                </tbody>
+                                <tbody id="recurring-expense-table-body" class="divide-y divide-slate-100 dark:divide-slate-700/50"></tbody>
                             </table>
                         </div>
                     </div>
@@ -852,7 +866,7 @@
         <!-- ================= TAB: PURCHASES ================= -->
         <section id="view-purchases" class="tab-content hidden space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Add Form (Collapsible) -->
+                <!-- Add Form -->
                 <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm overflow-hidden h-fit">
                     <button type="button" onclick="toggleFormCollapse('purchases-form-wrapper', 'purchases-form-chevron')" class="w-full p-5 flex items-center justify-between text-left focus:outline-none hover:bg-slate-50/50 dark:hover:bg-slate-700/20 transition">
                         <h3 class="text-base sm:text-lg font-bold flex items-center gap-2 text-rose-600 dark:text-rose-400">
@@ -880,9 +894,7 @@
                                         <label class="block text-xs font-semibold uppercase text-slate-500">Category</label>
                                         <button type="button" onclick="openCategoryModal()" class="text-[10px] text-brand-600 hover:underline">+ New</button>
                                     </div>
-                                    <select id="pur-exp-category" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none edit-category-select">
-                                        <!-- Dynamic categories -->
-                                    </select>
+                                    <select id="pur-exp-category" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none edit-category-select"></select>
                                 </div>
                             </div>
                             <div>
@@ -917,7 +929,6 @@
                             <span id="unpaid-purchase-total" class="font-bold text-amber-500 text-lg">Rp 0</span>
                         </div>
 
-                        <!-- Search & Filter Controls -->
                         <div class="flex items-center space-x-2">
                             <div class="relative w-36 sm:w-44">
                                 <i data-lucide="search" class="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400"></i>
@@ -947,9 +958,7 @@
                                         <th class="pb-3 font-semibold text-center">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody id="purchase-expense-table-body" class="divide-y divide-slate-100 dark:divide-slate-700/50">
-                                    <!-- Dynamic purchase elements -->
-                                </tbody>
+                                <tbody id="purchase-expense-table-body" class="divide-y divide-slate-100 dark:divide-slate-700/50"></tbody>
                             </table>
                         </div>
                     </div>
@@ -960,7 +969,7 @@
         <!-- ================= TAB: CASH ALLOCATIONS ================= -->
         <section id="view-allocations" class="tab-content hidden space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Allocation Add Form (Collapsible) -->
+                <!-- Allocation Add Form -->
                 <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm overflow-hidden h-fit">
                     <button type="button" onclick="toggleFormCollapse('allocations-form-wrapper', 'allocations-form-chevron')" class="w-full p-5 flex items-center justify-between text-left focus:outline-none hover:bg-slate-50/50 dark:hover:bg-slate-700/20 transition">
                         <h3 class="text-base sm:text-lg font-bold flex items-center gap-2">
@@ -1003,9 +1012,7 @@
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Category</label>
-                                <select id="alloc-category" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none edit-category-select">
-                                    <!-- Dynamic categories -->
-                                </select>
+                                <select id="alloc-category" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 dark:bg-slate-700 text-sm focus:ring-2 focus:ring-brand-500 focus:outline-none edit-category-select"></select>
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold uppercase text-slate-500 mb-1">Note / Description</label>
@@ -1041,9 +1048,7 @@
                                         <th class="pb-3 font-semibold text-center">Action</th>
                                     </tr>
                                 </thead>
-                                <tbody id="allocation-table-body" class="divide-y divide-slate-100 dark:divide-slate-700/50">
-                                    <!-- Dynamic elements -->
-                                </tbody>
+                                <tbody id="allocation-table-body" class="divide-y divide-slate-100 dark:divide-slate-700/50"></tbody>
                             </table>
                         </div>
                     </div>
@@ -1054,7 +1059,7 @@
         <!-- ================= TAB: SAVINGS & INVESTMENTS ================= -->
         <section id="view-savings" class="tab-content hidden space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Savings Goal Add Form (Collapsible) -->
+                <!-- Savings Goal Add Form -->
                 <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm overflow-hidden h-fit">
                     <button type="button" onclick="toggleFormCollapse('savings-form-wrapper', 'savings-form-chevron')" class="w-full p-5 flex items-center justify-between text-left focus:outline-none hover:bg-slate-50/50 dark:hover:bg-slate-700/20 transition">
                         <h3 class="text-base sm:text-lg font-bold flex items-center gap-2">
@@ -1114,16 +1119,14 @@
                     </div>
                 </div>
 
-                <!-- Savings & Investment Progress Cards -->
+                <!-- Savings Progress Cards -->
                 <div class="lg:col-span-2 space-y-4">
                     <div class="flex items-center justify-between">
                         <h3 class="text-lg font-bold">Savings & Wealth Allocations</h3>
                         <span id="savings-summary-tag" class="text-xs bg-teal-100 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 px-3 py-1 rounded-full font-medium">0 Goals</span>
                     </div>
 
-                    <div id="savings-container" class="space-y-4">
-                        <!-- Dynamic Savings Cards -->
-                    </div>
+                    <div id="savings-container" class="space-y-4"></div>
                 </div>
             </div>
         </section>
@@ -1131,7 +1134,7 @@
         <!-- ================= TAB: LOANS ================= -->
         <section id="view-loans" class="tab-content hidden space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Loan Registration Form (Collapsible) -->
+                <!-- Loan Registration Form -->
                 <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm overflow-hidden h-fit">
                     <button type="button" onclick="toggleFormCollapse('loans-form-wrapper', 'loans-form-chevron')" class="w-full p-5 flex items-center justify-between text-left focus:outline-none hover:bg-slate-50/50 dark:hover:bg-slate-700/20 transition">
                         <h3 class="text-base sm:text-lg font-bold flex items-center gap-2">
@@ -1186,9 +1189,7 @@
                         <span id="loans-summary-tag" class="text-xs bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 px-3 py-1 rounded-full font-medium">0 Active Loans</span>
                     </div>
 
-                    <div id="loans-container" class="space-y-4">
-                        <!-- Dynamic Loan Cards -->
-                    </div>
+                    <div id="loans-container" class="space-y-4"></div>
                 </div>
             </div>
         </section>
@@ -1200,121 +1201,9 @@
         <p>Common Centz • Personal Finance, Savings & Loan Manager</p>
     </footer>
 
-    <!-- Firebase SDK Imports for Cloud Database Syncing -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Global App & Firebase Config Initialization
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'common-centz-app';
-        const firebaseConfig = {
-          apiKey: "AIzaSyANgaUbrRNWQfkcCJpJ92XhjmosSIedePo",
-          authDomain: "common-centz.firebaseapp.com",
-          databaseURL: "https://common-centz-default-rtdb.asia-southeast1.firebasedatabase.app",
-          projectId: "common-centz",
-          storageBucket: "common-centz.firebasestorage.app",
-          messagingSenderId: "714790275940",
-          appId: "1:714790275940:web:d13b092e0ff4645aa8c871",
-          measurementId: "G-5QG3WVFSXD"
-};
-
-        let app, db, auth;
-        let userSyncKey = localStorage.getItem('userSyncKey') || crypto.randomUUID().slice(0, 12);
-        localStorage.setItem('userSyncKey', userSyncKey);
-
-        try {
-            app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-            auth = getAuth(app);
-
-            const initialToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-            if (initialToken) {
-                await signInWithCustomToken(auth, initialToken);
-            } else {
-                await signInAnonymously(auth);
-            }
-
-            // Sync with Firestore document using userSyncKey
-            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'userStores', userSyncKey);
-
-            onSnapshot(docRef, (snapshot) => {
-                if (snapshot.exists()) {
-                    const data = snapshot.data();
-                    if (data) {
-                        if (data.incomeStreams) incomeStreams = data.incomeStreams;
-                        if (data.expenses) expenses = data.expenses;
-                        if (data.allocations) allocations = data.allocations;
-                        if (data.savings) savings = data.savings;
-                        if (data.loans) loans = data.loans;
-                        if (data.customCategories) customCategories = data.customCategories;
-                        if (data.categoryCaps) categoryCaps = data.categoryCaps;
-                        if (data.currency) currency = data.currency;
-                        if (data.startingCashBalance !== undefined) startingCashBalance = data.startingCashBalance;
-                        if (data.paydayStartDay !== undefined) paydayStartDay = data.paydayStartDay;
-                        if (data.cycleMode) cycleMode = data.cycleMode;
-
-                        saveLocalBackup();
-                        renderAllViews();
-                    }
-                } else {
-                    // Initialize cloud document with local state
-                    pushDataToCloud();
-                }
-                updateSyncBadge(true);
-            }, (error) => {
-                console.warn("Firestore sync offline fallback:", error);
-                updateSyncBadge(false);
-            });
-
-        } catch (err) {
-            console.warn("Offline local mode active:", err);
-            updateSyncBadge(false);
-        }
-
-        window.pushDataToCloud = async function() {
-            saveLocalBackup();
-            if (db && auth?.currentUser) {
-                try {
-                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'userStores', userSyncKey);
-                    await setDoc(docRef, {
-                        incomeStreams, expenses, allocations, savings, loans,
-                        customCategories, categoryCaps, currency, startingCashBalance, paydayStartDay, cycleMode,
-                        updatedAt: new Date().toISOString()
-                    });
-                    updateSyncBadge(true);
-                } catch (e) {
-                    console.warn("Cloud save error:", e);
-                    updateSyncBadge(false);
-                }
-            }
-        };
-
-        function updateSyncBadge(online) {
-            const textEl = document.getElementById('sync-status-text');
-            const badgeEl = document.getElementById('sync-status-badge');
-            if (textEl && badgeEl) {
-                if (online) {
-                    textEl.textContent = "Synced to Cloud";
-                    badgeEl.className = "inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300";
-                } else {
-                    textEl.textContent = "Local Mode";
-                    badgeEl.className = "inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300";
-                }
-            }
-        }
-
-        window.getUserSyncKey = function() { return userSyncKey; };
-        window.setUserSyncKey = function(key) {
-            userSyncKey = key;
-            localStorage.setItem('userSyncKey', userSyncKey);
-            location.reload();
-        };
-    </script>
-
-    <!-- Application JavaScript Logic -->
+    <!-- Application JavaScript Engine -->
     <script>
-        // --- State Initialization & Default Declarations ---
+        // Global Date State
         const todayObj = new Date();
         const defaultISO = todayObj.toISOString().slice(0, 10);
         const defaultMonthISO = todayObj.toISOString().slice(0, 7);
@@ -1322,13 +1211,14 @@
         let currency = localStorage.getItem('currency') || 'Rp';
         let startingCashBalance = parseFloat(localStorage.getItem('startingCashBalance')) || 0;
         let paydayStartDay = parseInt(localStorage.getItem('paydayStartDay')) || 26;
-        let cycleMode = localStorage.getItem('cycleMode') || 'paycycle'; // 'paycycle' or 'calendar'
+        let cycleMode = localStorage.getItem('cycleMode') || 'paycycle';
+        let sheetsSyncUrl = localStorage.getItem('sheetsSyncUrl') || '';
         
-        let recurringExpenseStatusFilter = 'all'; // 'all', 'unpaid', 'paid'
-        let purchaseExpenseStatusFilter = 'all';  // 'all', 'unpaid', 'paid'
+        let recurringExpenseStatusFilter = 'all';
+        let purchaseExpenseStatusFilter = 'all';
 
         let currentPeriodFilter = {
-            mode: 'current', // 'current', 'month', 'custom'
+            mode: 'current',
             startDate: defaultISO,
             endDate: defaultISO,
             monthStr: defaultMonthISO
@@ -1350,6 +1240,150 @@
         let overviewChartInstance = null;
         let categoryChartInstance = null;
 
+        // --- Google Sheets Sync Engine ---
+        function updateSyncBadge(status) {
+            const badgeDot = document.getElementById('sync-status-dot');
+            const badgeText = document.getElementById('sync-status-text');
+            if (!badgeDot || !badgeText) return;
+
+            if (status === 'synced') {
+                badgeDot.className = "w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse";
+                badgeText.textContent = "Google Sheets Synced";
+            } else if (status === 'syncing') {
+                badgeDot.className = "w-1.5 h-1.5 rounded-full bg-amber-500 animate-ping";
+                badgeText.textContent = "Syncing...";
+            } else {
+                badgeDot.className = "w-1.5 h-1.5 rounded-full bg-slate-400";
+                badgeText.textContent = "Standalone Mode";
+            }
+        }
+
+        async function pushToGoogleSheets() {
+            if (!sheetsSyncUrl) return;
+            updateSyncBadge('syncing');
+
+            const payloadObj = {
+                incomeStreams, expenses, allocations, savings, loans,
+                customCategories, categoryCaps, currency, startingCashBalance,
+                paydayStartDay, cycleMode
+            };
+
+            try {
+                await fetch(sheetsSyncUrl, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payloadObj)
+                });
+                updateSyncBadge('synced');
+            } catch(e) {
+                console.warn("Google Sheets push error:", e);
+                updateSyncBadge('offline');
+            }
+        }
+
+        async function fetchFromGoogleSheets() {
+            if (!sheetsSyncUrl) return;
+            updateSyncBadge('syncing');
+
+            try {
+                const res = await fetch(sheetsSyncUrl);
+                const data = await res.json();
+
+                if (data && typeof data === 'object') {
+                    if (data.incomeStreams) incomeStreams = data.incomeStreams;
+                    if (data.expenses) expenses = data.expenses;
+                    if (data.allocations) allocations = data.allocations;
+                    if (data.savings) savings = data.savings;
+                    if (data.loans) loans = data.loans;
+                    if (data.customCategories) customCategories = data.customCategories;
+                    if (data.categoryCaps) categoryCaps = data.categoryCaps;
+                    if (data.currency) currency = data.currency;
+                    if (data.startingCashBalance !== undefined) startingCashBalance = data.startingCashBalance;
+                    if (data.paydayStartDay !== undefined) paydayStartDay = data.paydayStartDay;
+                    if (data.cycleMode) cycleMode = data.cycleMode;
+
+                    saveData(false); // Save locally without re-triggering recursive push
+                    populateCategorySelects();
+                    renderAllViews();
+                    updateSyncBadge('synced');
+                }
+            } catch(e) {
+                console.warn("Google Sheets fetch error:", e);
+                updateSyncBadge('offline');
+            }
+        }
+
+        function openSheetsSyncModal() {
+            document.getElementById('sheets-url-input').value = sheetsSyncUrl;
+            document.getElementById('sheets-sync-modal').classList.remove('hidden');
+        }
+
+        function closeSheetsSyncModal() {
+            document.getElementById('sheets-sync-modal').classList.add('hidden');
+        }
+
+        function saveSheetsSyncUrl() {
+            const url = document.getElementById('sheets-url-input').value.trim();
+            sheetsSyncUrl = url;
+            localStorage.setItem('sheetsSyncUrl', url);
+            closeSheetsSyncModal();
+
+            if (url) {
+                showToast("Connected to Google Sheets!");
+                fetchFromGoogleSheets();
+            } else {
+                updateSyncBadge('offline');
+                showToast("Disconnected from Google Sheets.");
+            }
+        }
+
+        function disconnectSheetsSync() {
+            sheetsSyncUrl = '';
+            localStorage.removeItem('sheetsSyncUrl');
+            document.getElementById('sheets-url-input').value = '';
+            closeSheetsSyncModal();
+            updateSyncBadge('offline');
+            showToast("Google Sheets Sync disconnected.");
+        }
+
+        function manualSheetsSync() {
+            if (!sheetsSyncUrl) {
+                showToast("Please enter a Web App URL first.");
+                return;
+            }
+            fetchFromGoogleSheets();
+            showToast("Syncing with Google Sheets...");
+        }
+
+        // Auto Load Data from URL Param (Share link feature)
+        function checkUrlDataImport() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const dataParam = urlParams.get('data');
+            if (dataParam) {
+                try {
+                    const jsonStr = decodeURIComponent(atob(dataParam));
+                    const parsed = JSON.parse(jsonStr);
+                    if (confirm("Found incoming financial dataset from link. Load it into Common Centz?")) {
+                        if (parsed.incomeStreams) incomeStreams = parsed.incomeStreams;
+                        if (parsed.expenses) expenses = parsed.expenses;
+                        if (parsed.allocations) allocations = parsed.allocations;
+                        if (parsed.savings) savings = parsed.savings;
+                        if (parsed.loans) loans = parsed.loans;
+                        if (parsed.customCategories) customCategories = parsed.customCategories;
+                        if (parsed.categoryCaps) categoryCaps = parsed.categoryCaps;
+                        if (parsed.currency) currency = parsed.currency;
+                        if (parsed.startingCashBalance !== undefined) startingCashBalance = parsed.startingCashBalance;
+                        saveData();
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                        showToast("Data imported successfully from URL!");
+                    }
+                } catch(e) {
+                    console.warn("Invalid URL data payload", e);
+                }
+            }
+        }
+
         // Form Collapsible Engine
         function toggleFormCollapse(wrapperId, chevronId) {
             const wrapper = document.getElementById(wrapperId);
@@ -1367,7 +1401,7 @@
         }
 
         function initFormCollapseState() {
-            const isMobile = window.innerWidth < 1024; // Collapse on screens smaller than lg (mobile & tablet)
+            const isMobile = window.innerWidth < 1024;
             const wrappers = [
                 { wrapper: 'income-form-wrapper', chevron: 'income-form-chevron' },
                 { wrapper: 'recurring-form-wrapper', chevron: 'recurring-form-chevron' },
@@ -1410,15 +1444,20 @@
             document.getElementById('currencySelect').value = currency;
             document.getElementById('payday-start-day').value = paydayStartDay;
             
+            checkUrlDataImport();
             initFormCollapseState();
             populateCategorySelects();
             updateCycleToggleUI();
             handlePeriodFilterUpdate();
             updateCurrencySymbol(currency);
+
+            if (sheetsSyncUrl) {
+                fetchFromGoogleSheets();
+            }
         };
 
         // --- Data Persistence Handlers ---
-        function saveLocalBackup() {
+        function saveData(shouldSyncSheets = true) {
             localStorage.setItem('incomeStreams', JSON.stringify(incomeStreams));
             localStorage.setItem('expenses', JSON.stringify(expenses));
             localStorage.setItem('allocations', JSON.stringify(allocations));
@@ -1430,12 +1469,9 @@
             localStorage.setItem('startingCashBalance', startingCashBalance.toString());
             localStorage.setItem('paydayStartDay', paydayStartDay.toString());
             localStorage.setItem('cycleMode', cycleMode);
-        }
 
-        function saveData() {
-            saveLocalBackup();
-            if (typeof window.pushDataToCloud === 'function') {
-                window.pushDataToCloud();
+            if (shouldSyncSheets && sheetsSyncUrl) {
+                pushToGoogleSheets();
             }
         }
 
@@ -1451,6 +1487,44 @@
             renderRemindersAndCaps();
             renderCharts();
             lucide.createIcons();
+        }
+
+        // --- URL Share & QR Modal ---
+        function openShareModal() {
+            const payloadObj = {
+                incomeStreams, expenses, allocations, savings, loans,
+                customCategories, categoryCaps, currency, startingCashBalance
+            };
+            const b64Data = btoa(encodeURIComponent(JSON.stringify(payloadObj)));
+            const shareUrl = `${window.location.origin}${window.location.pathname}?data=${b64Data}`;
+
+            document.getElementById('share-url-display').value = shareUrl;
+
+            const qrContainer = document.getElementById('qrcode-container');
+            qrContainer.innerHTML = '';
+            try {
+                const qr = qrcode(0, 'L');
+                qr.addData(shareUrl);
+                qr.make();
+                qrContainer.innerHTML = qr.createImgTag(5);
+            } catch(e) {
+                qrContainer.textContent = "URL too long for QR. Use Copy Link below.";
+            }
+
+            document.getElementById('share-modal').classList.remove('hidden');
+        }
+
+        function closeShareModal() {
+            document.getElementById('share-modal').classList.add('hidden');
+        }
+
+        function copyShareUrl() {
+            const input = document.getElementById('share-url-display');
+            if (input) {
+                input.select();
+                document.execCommand('copy');
+                showToast("Share link copied to clipboard!");
+            }
         }
 
         // --- Quick Add FAB Modal Engine ---
@@ -1598,13 +1672,12 @@
             renderAllViews();
         }
 
-        // --- Bill Due Reminders & Category Budget Progress Bars ---
+        // --- Bill Reminders & Category Budget Progress Bars ---
         function renderRemindersAndCaps() {
             const remindersBox = document.getElementById('dash-reminders-container');
             const remindersList = document.getElementById('dash-reminders-list');
             const capsList = document.getElementById('category-caps-list');
 
-            // 1. Bill Reminders Logic
             if (remindersBox && remindersList) {
                 remindersList.innerHTML = '';
                 const today = new Date();
@@ -1643,7 +1716,6 @@
                 else remindersBox.classList.add('hidden');
             }
 
-            // 2. Category Caps Progress Bars Logic
             if (capsList) {
                 capsList.innerHTML = '';
                 const periodExps = expenses.filter(e => e.status !== 'skipped' && isDateInFilterPeriod(e.date, e.endDate, e.type === 'recurring'));
@@ -1725,7 +1797,7 @@
             document.getElementById('overview-loans-exp').textContent = formatCurrency(m.activeLoansOutflow);
         }
 
-        // --- Income Table Renderer with Search Filter ---
+        // --- Income Table Renderer ---
         function renderIncomeTable() {
             const body = document.getElementById('income-table-body');
             if (!body) return;
@@ -1773,37 +1845,7 @@
             });
         }
 
-        // --- Sync Modal Handlers ---
-        function openSyncModal() {
-            const displayInput = document.getElementById('sync-key-display');
-            if (displayInput && typeof window.getUserSyncKey === 'function') {
-                displayInput.value = window.getUserSyncKey();
-            }
-            document.getElementById('sync-modal').classList.remove('hidden');
-        }
-
-        function closeSyncModal() {
-            document.getElementById('sync-modal').classList.add('hidden');
-        }
-
-        function copySyncKey() {
-            const input = document.getElementById('sync-key-display');
-            if (input) {
-                input.select();
-                document.execCommand('copy');
-                showToast("Sync Key copied to clipboard!");
-            }
-        }
-
-        function handleApplySyncKey(e) {
-            e.preventDefault();
-            const val = document.getElementById('custom-sync-key-input').value.trim();
-            if (val && typeof window.setUserSyncKey === 'function') {
-                window.setUserSyncKey(val);
-            }
-        }
-
-        // --- UI & Dropdown Menu Handlers ---
+        // --- UI Menu Handlers ---
         function toggleSettingsMenu(event) {
             if (event) event.stopPropagation();
             const dropdown = document.getElementById('settingsDropdown');
@@ -1902,7 +1944,7 @@
                     startDate = new Date(year, month - 1, paydayStartDay);
                     endDate = new Date(year, month, paydayStartDay - 1);
                 }
-            } else { // Calendar Month
+            } else {
                 startDate = new Date(year, month, 1);
                 endDate = new Date(year, month + 1, 0);
             }
@@ -2032,7 +2074,7 @@
             renderAllViews();
         }
 
-        // --- Category & Optional Limit Management ---
+        // --- Category Management ---
         function populateCategorySelects() {
             const selects = document.querySelectorAll('.edit-category-select');
             selects.forEach(sel => {
@@ -2120,7 +2162,6 @@
             lucide.createIcons();
         }
 
-        // --- Format Currency ---
         function formatCurrency(amount) {
             return `${currency} ${parseFloat(amount || 0).toLocaleString()}`;
         }
@@ -2135,7 +2176,6 @@
             }
         }
 
-        // --- Universal Data Metrics Calculation ---
         function calculateMetrics() {
             const periodIncomeList = incomeStreams.filter(i => isDateInFilterPeriod(i.date, i.endDate, i.type === 'recurring'));
             const totalIncome = periodIncomeList.reduce((sum, i) => sum + parseFloat(i.amount), 0);
@@ -2379,9 +2419,7 @@
                         const isSkipped = item.status === 'skipped';
                         tr.className = `hover:bg-slate-50 dark:hover:bg-slate-700/30 transition ${isSkipped ? 'opacity-50 line-through' : ''}`;
                         tr.innerHTML = `
-                            <td class="py-3 text-center">
-                                ${getStatusBtnHTML(item.status, item.id)}
-                            </td>
+                            <td class="py-3 text-center">${getStatusBtnHTML(item.status, item.id)}</td>
                             <td class="py-3 font-semibold">
                                 ${item.name}
                                 ${isSkipped ? `<span class="ml-2 no-underline inline-block px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-500 text-[10px] font-normal rounded-md">Skipped</span>` : ''}
@@ -2411,9 +2449,7 @@
                         const isSkipped = item.status === 'skipped';
                         tr.className = `hover:bg-slate-50 dark:hover:bg-slate-700/30 transition ${isSkipped ? 'opacity-50 line-through' : ''}`;
                         tr.innerHTML = `
-                            <td class="py-3 text-center">
-                                ${getStatusBtnHTML(item.status, item.id)}
-                            </td>
+                            <td class="py-3 text-center">${getStatusBtnHTML(item.status, item.id)}</td>
                             <td class="py-3 font-semibold">
                                 ${item.name}
                                 ${isSkipped ? `<span class="ml-2 no-underline inline-block px-1.5 py-0.5 bg-slate-100 dark:bg-slate-700 text-slate-500 text-[10px] font-normal rounded-md">Skipped</span>` : ''}
@@ -2498,7 +2534,7 @@
             });
         }
 
-        // --- Savings & Investments Handlers, Top-Up & Used Toggle ---
+        // --- Savings & Investments Handlers ---
         function handleAddSavings(e) {
             e.preventDefault();
             const newItem = {
@@ -2773,7 +2809,7 @@
             });
         }
 
-        // --- Dashboard Quick Summary Lists ---
+        // --- Dashboard Quick Lists ---
         function renderDashboardLists() {
             const loanList = document.getElementById('dash-loans-list');
             const expList = document.getElementById('dash-recent-expenses');
@@ -3019,7 +3055,7 @@
             });
         }
 
-        // --- Export Selected Period Data to CSV Spreadsheet ---
+        // --- Export Period Data to CSV Spreadsheet ---
         function exportPeriodToCSV() {
             const start = currentPeriodFilter.startDate;
             const end = currentPeriodFilter.endDate;
@@ -3083,7 +3119,7 @@
             showToast("Period data exported to CSV!");
         }
 
-        // --- Backup & Reset Engine ---
+        // --- Backup & Restore Engine ---
         function exportData() {
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({
                 incomeStreams, expenses, allocations, savings, loans, customCategories, categoryCaps, currency, startingCashBalance, paydayStartDay, cycleMode
@@ -3094,6 +3130,41 @@
             document.body.appendChild(downloadAnchor);
             downloadAnchor.click();
             downloadAnchor.remove();
+        }
+
+        function triggerImport() {
+            document.getElementById('import-file-input').click();
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data.incomeStreams) incomeStreams = data.incomeStreams;
+                    if (data.expenses) expenses = data.expenses;
+                    if (data.allocations) allocations = data.allocations;
+                    if (data.savings) savings = data.savings;
+                    if (data.loans) loans = data.loans;
+                    if (data.customCategories) customCategories = data.customCategories;
+                    if (data.categoryCaps) categoryCaps = data.categoryCaps;
+                    if (data.currency) currency = data.currency;
+                    if (data.startingCashBalance !== undefined) startingCashBalance = data.startingCashBalance;
+                    if (data.paydayStartDay !== undefined) paydayStartDay = data.paydayStartDay;
+                    if (data.cycleMode) cycleMode = data.cycleMode;
+
+                    saveData();
+                    populateCategorySelects();
+                    renderAllViews();
+                    showToast("Backup restored successfully!");
+                } catch (err) {
+                    alert("Failed to parse backup JSON file.");
+                }
+            };
+            reader.readAsText(file);
         }
 
         function resetAllData() {
