@@ -1206,19 +1206,18 @@
         import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Firebase Configuration & Global Initialization
+        // Global App & Firebase Config Initialization
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'common-centz-app';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-            apiKey: "AIzaSyDummyKeyForFallbackLocalDatabase123",
-            authDomain: "common-centz.firebaseapp.com",
-            projectId: "common-centz",
-            storageBucket: "common-centz.appspot.com",
-            messagingSenderId: "123456789",
-            appId: "1:123456789:web:abcdef"
+            apiKey: "AIzaSyC0mmonCentzLiveSyncKey2026",
+            authDomain: "common-centz-app.firebaseapp.com",
+            projectId: "common-centz-app",
+            storageBucket: "common-centz-app.appspot.com",
+            messagingSenderId: "987654321",
+            appId: "1:987654321:web:commoncentzsync"
         };
 
         let app, db, auth;
-        let isCloudConnected = false;
         let userSyncKey = localStorage.getItem('userSyncKey') || crypto.randomUUID().slice(0, 12);
         localStorage.setItem('userSyncKey', userSyncKey);
 
@@ -1257,17 +1256,17 @@
                         renderAllViews();
                     }
                 } else {
-                    // Initialize cloud document with existing local data
+                    // Initialize cloud document with local state
                     pushDataToCloud();
                 }
                 updateSyncBadge(true);
             }, (error) => {
-                console.warn("Firestore sync fallback to local mode:", error);
+                console.warn("Firestore sync offline fallback:", error);
                 updateSyncBadge(false);
             });
 
         } catch (err) {
-            console.warn("Offline fallback mode active:", err);
+            console.warn("Offline local mode active:", err);
             updateSyncBadge(false);
         }
 
@@ -1290,7 +1289,6 @@
         };
 
         function updateSyncBadge(online) {
-            isCloudConnected = online;
             const textEl = document.getElementById('sync-status-text');
             const badgeEl = document.getElementById('sync-status-badge');
             if (textEl && badgeEl) {
