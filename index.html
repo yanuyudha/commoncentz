@@ -1208,14 +1208,16 @@
 
         // Global App & Firebase Config Initialization
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'common-centz-app';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-            apiKey: "AIzaSyC0mmonCentzLiveSyncKey2026",
-            authDomain: "common-centz-app.firebaseapp.com",
-            projectId: "common-centz-app",
-            storageBucket: "common-centz-app.appspot.com",
-            messagingSenderId: "987654321",
-            appId: "1:987654321:web:commoncentzsync"
-        };
+        const firebaseConfig = {
+          apiKey: "AIzaSyANgaUbrRNWQfkcCJpJ92XhjmosSIedePo",
+          authDomain: "common-centz.firebaseapp.com",
+          databaseURL: "https://common-centz-default-rtdb.asia-southeast1.firebasedatabase.app",
+          projectId: "common-centz",
+          storageBucket: "common-centz.firebasestorage.app",
+          messagingSenderId: "714790275940",
+          appId: "1:714790275940:web:d13b092e0ff4645aa8c871",
+          measurementId: "G-5QG3WVFSXD"
+};
 
         let app, db, auth;
         let userSyncKey = localStorage.getItem('userSyncKey') || crypto.randomUUID().slice(0, 12);
